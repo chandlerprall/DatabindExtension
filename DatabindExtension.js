@@ -87,6 +87,17 @@
             return ret;
         };
     };
+    DatabindExtension.unbind = function( context )
+    {
+        for ( var i = 0; i < bindings.length; i++ )
+        {
+            if ( bindings[i].context === context )
+            {
+                bindings.splice( i, 1 );
+                i--;
+            }
+        }
+    };
 
     var updateBindings = function()
         {
