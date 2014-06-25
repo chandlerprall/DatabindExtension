@@ -19,7 +19,7 @@
                 parts = this.contextIdentifier;
 
 
-            for ( var i = 0; i < this.contextIdentifier.length; i++ )
+            for ( var i = 0; i < this.contextIdentifier.length && identified != null; i++ )
             {
                 var part = this.contextIdentifier[i];
                 identified = identified[part];
