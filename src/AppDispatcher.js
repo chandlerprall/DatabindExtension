@@ -3,11 +3,11 @@
  */
 (function() {
 
-  function EventDispatcher() {}
+  function AppDispatcher() {}
 
   // Bind an event to a `callback` function. Passing `"all"` will bind
   // the callback to all events fired.
-  EventDispatcher.prototype.on = function(name, callback, context) {
+  AppDispatcher.prototype.on = function(name, callback, context) {
     if (!eventsApi(this, 'on', name, [callback, context]) || !callback)
       return this;
     this._events || (this._events = {});
@@ -18,7 +18,7 @@
 
   // Bind an event to only be triggered a single time. After the first time
   // the callback is invoked, it will be removed.
-  EventDispatcher.prototype.once = function(name, callback, context) {
+  AppDispatcher.prototype.once = function(name, callback, context) {
     if (!eventsApi(this, 'once', name, [callback, context]) || !callback)
       return this;
     var self = this;
@@ -38,7 +38,7 @@
   // callbacks with that function. If `callback` is null, removes all
   // callbacks for the event. If `name` is null, removes all bound
   // callbacks for all events.
-  EventDispatcher.prototype.off = function(name, callback, context) {
+  AppDispatcher.prototype.off = function(name, callback, context) {
     var retain, ev, events, names, i, l, j, k;
     if (!this._events || !eventsApi(this, 'off', name, [callback, context]))
       return this;
@@ -73,7 +73,7 @@
   // passed the same arguments as `trigger` is, apart from the event name
   // (unless you're listening on `"all"`, which will cause your callback to
   // receive the true name of the event as the first argument).
-  EventDispatcher.prototype.trigger = function(name) {
+  AppDispatcher.prototype.trigger = function(name) {
     if (!this._events) return this;
     var args = Array.prototype.slice.call(arguments, 1);
     if (!eventsApi(this, 'trigger', name, args)) return this;
@@ -86,7 +86,7 @@
 
   // Tell this object to stop listening to either specific events ... or
   // to every object it's currently listening to.
-  EventDispatcher.prototype.stopListening = function(obj, name, callback) {
+  AppDispatcher.prototype.stopListening = function(obj, name, callback) {
     var listeningTo = this._listeningTo;
     if (!listeningTo) return this;
     var remove = !name && !callback;
@@ -157,7 +157,7 @@
   // listening to.
   Object.keys(listenMethods).forEach(function(method) {
     var implementation = listenMethods[method];
-    EventDispatcher[method] = function(obj, name, callback) {
+    AppDispatcher[method] = function(obj, name, callback) {
       var listeningTo = this._listeningTo || (this._listeningTo = {});
       var id = obj._listenId || (obj._listenId = _.uniqueId('l'));
       listeningTo[id] = obj;
@@ -168,6 +168,6 @@
   });
 
   // Set up a central dispatcher to handle actions across the app
-  window.appDispatcher = new EventDispatcher();
+  window.appDispatcher = new AppDispatcher();
 
 })();
