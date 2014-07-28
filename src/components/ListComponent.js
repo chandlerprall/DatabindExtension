@@ -26,7 +26,7 @@
     },
 
     onClick: function() {
-      ListActions.addItem(this.refs.itemInput.state.value);
+      ItemActions.addItem(this.refs.itemInput.state.value);
     }
 
   });

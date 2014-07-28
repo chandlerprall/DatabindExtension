@@ -31,7 +31,7 @@
     },
 
     onChange: function (event) {
-      PageActions.updateName(event.target.value);
+      PersonActions.updateName(event.target.value);
     }
 
   });
