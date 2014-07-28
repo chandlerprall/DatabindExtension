@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<html>
   <head>
     <style type="text/css">
       html {
@@ -13,51 +14,23 @@
         background-color: rgb( 255, 255, 220 );
       }
     </style>
-    <script type="text/javascript" src="lib/handlebars.js"></script>
-    <script type="text/javascript" src="TemplateLoader.js"></script>
-    <script type="text/javascript" src="databind-helper.js"></script>
+    <!-- Require.js or Browserify would make this a lot cleaner -->
+    <script type="text/javascript" src="lib/react.js"></script>
+    <script type="text/javascript" src="src/EventDispatcher.js"></script>
+    <script type="text/javascript" src="src/actions/ActionTypes.js"></script>
+    <script type="text/javascript" src="src/stores/PersonStore.js"></script>
+    <script type="text/javascript" src="src/stores/ItemStore.js"></script>
+    <script type="text/javascript" src="src/actions/PageActions.js"></script>
+    <script type="text/javascript" src="src/actions/ListActions.js"></script>
+    <script type="text/javascript" src="src/components/StateFromStoresMixin.js"></script>
+    <script type="text/javascript" src="src/components/ListComponent.js"></script>
+    <script type="text/javascript" src="src/components/PageComponent.js"></script>
   </head>
   <body>
-    <input type="text" value="person" id="nameSrc"/>
-
     <div id="container"></div>
 
     <script type="text/javascript">
-      // Initialize the simple template loader
-      var templateLoader = new TemplateLoader('templates');
-
-      // Grab the base template, and the partial
-      var pageTemplate = templateLoader.getTemplate('page');
-      var listTemplate = templateLoader.getTemplate('list');
-
-      Handlebars.registerPartial('list', listTemplate);
-
-      // Object used for rendering templates
-      var data = {
-        displayName: 'person',
-        items: [ 'Test1', 'Test2' ]
-      };
-
-      // Render the template
-      document.getElementById('container').innerHTML = pageTemplate(data);
-
-      // Update the displayName value when user types in the nameSrc field
-      var $nameSrc = document.getElementById('nameSrc');
-      $nameSrc.addEventListener('keyup', function() {
-        data.displayName = this.value;
-      });
-
-      // Event delegation for adding items to the list
-      document.body.addEventListener('click', function(e) {
-        var target = e.target || e.srcElement;
-        var eventName = target.getAttribute( 'data-event' );
-
-        switch(eventName) {
-          case 'add-item':
-            data.items.push( document.getElementById( 'newItem' ).value );
-            break;
-        }
-      });
+      React.renderComponent(PageComponent(), document.getElementById('container'));
     </script>
   </body>
 </html>
