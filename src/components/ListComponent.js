@@ -1,5 +1,6 @@
 (function () {
 
+  var div = React.DOM.div;
   var ul = React.DOM.ul;
   var li = React.DOM.li;
   var input = React.DOM.input;
@@ -15,12 +16,13 @@
     },
 
     render: function() {
-      return ul({}, this.state.items.map(function(item) {
-        return li({}, item);
-      }, this).concat([
+      return div({}, [
+        ul({}, this.state.items.map(function(item) {
+          return li({}, item);
+        }, this)),
         input({'type': 'text', 'ref': 'itemInput'}),
         button({'onClick': this.onClick}, 'Add')
-      ]));
+      ]);
     },
 
     onClick: function() {
