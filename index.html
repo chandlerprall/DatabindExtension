@@ -1,81 +1,63 @@
 <!DOCTYPE html>
-
-<head>
+  <head>
     <style type="text/css">
-        html {
-            background-color: white;
-        }
+      html {
+        background-color: white;
+      }
 
-        body {
-            width: 800px;
-            margin: 0 auto;
-            box-model: border-box;
-            padding: 10px;
-            background-color: rgb( 255, 255, 220 );
-        }
+      body {
+        width: 800px;
+        margin: 0 auto;
+        box-model: border-box;
+        padding: 10px;
+        background-color: rgb( 255, 255, 220 );
+      }
     </style>
-    <script type="text/javascript" src="/js/nunjucks.min.js"></script>
-    <script type="text/javascript" src="DatabindExtension.js"></script>
-</head>
-
-<body>
+    <script type="text/javascript" src="lib/handlebars.js"></script>
+    <script type="text/javascript" src="TemplateLoader.js"></script>
+    <script type="text/javascript" src="databind-helper.js"></script>
+  </head>
+  <body>
     <input type="text" value="person" id="nameSrc"/>
 
     <div id="container"></div>
 
     <script type="text/javascript">
-        // Create Nunjucks environment with the databinding extension
-        var nunjucksEnv = new nunjucks.Environment(
-            new nunjucks.WebLoader( '/templates' ),
-            {
-                autoescape: true
-            }
-        );
-        nunjucksEnv.addExtension( 'BindExtension', new DatabindExtension() );
+      // Initialize the simple template loader
+      var templateLoader = new TemplateLoader('templates');
 
-        // Object used for rendering templates
-        var data = {
-            displayName: 'person',
-            items: [ 'Test1', 'Test2' ]
-        };
+      // Grab the base template, and the partial
+      var pageTemplate = templateLoader.getTemplate('page');
+      var listTemplate = templateLoader.getTemplate('list');
 
-        // Fetch the template & render
-        var template = nunjucksEnv.getTemplate( 'pageTemplate.html' );
-        template.render(
-            data,
-            function( error, result )
-            {
-                document.getElementById( 'container' ).innerHTML = result;
-            }
-        );
+      Handlebars.registerPartial('list', listTemplate);
 
-        // Update the displayName value when user types in the nameSrc field
-        var $nameSrc = document.getElementById( 'nameSrc' );
-        $nameSrc.addEventListener(
-            'keyup',
-            function()
-            {
-                data.displayName = this.value;
-            }
-        );
+      // Object used for rendering templates
+      var data = {
+        displayName: 'person',
+        items: [ 'Test1', 'Test2' ]
+      };
 
-        // Event delegation for adding items to the list
-        document.body.addEventListener(
-            'click',
-            function( e )
-            {
-                var target = e.target || e.srcElement,
-                    eventName = target.getAttribute( 'data-event' );
+      // Render the template
+      document.getElementById('container').innerHTML = pageTemplate(data);
 
-                switch( eventName )
-                {
-                    case 'add-item':
-                        data.items.push( document.getElementById( 'newItem' ).value );
-                        break;
-                }
-            }
-        );
+      // Update the displayName value when user types in the nameSrc field
+      var $nameSrc = document.getElementById('nameSrc');
+      $nameSrc.addEventListener('keyup', function() {
+        data.displayName = this.value;
+      });
+
+      // Event delegation for adding items to the list
+      document.body.addEventListener('click', function(e) {
+        var target = e.target || e.srcElement;
+        var eventName = target.getAttribute( 'data-event' );
+
+        switch(eventName) {
+          case 'add-item':
+            data.items.push( document.getElementById( 'newItem' ).value );
+            break;
+        }
+      });
     </script>
-</body>
-
+  </body>
 </html>

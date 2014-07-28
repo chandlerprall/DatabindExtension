@@ -1,0 +1,9 @@
+{{#bind "items"}}
+  <ul>
+    {{#each items}}
+      <li>{{this}}</li>
+    {{/each}}
+  </ul>
+{{/bind}}
+
+<input type="text" id="newItem"/><button data-event="add-item">Add</button>
