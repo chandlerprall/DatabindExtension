@@ -26,7 +26,7 @@
         }),
         h1({}, "Hello"),
         p({}, "So glad you could make it, " + this.state.displayName),
-        ListComponent({'items': this.props.items})
+        ListComponent({})
       ]);
     },
 
