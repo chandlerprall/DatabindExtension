@@ -27,6 +27,8 @@
 <input type="text" value="person" id="nameSrc"/>
 
 <div id="container"></div>
+<br/>
+<button id="refresh">Refresh Data</button>
 
 <script type="text/javascript">
     window.addEventListener('load', function () {
@@ -35,7 +37,7 @@
             autoescape: true
         });
 
-        var databindExtension = new DatabindExtension();
+        var databindExtension = new DatabindExtension({updateMode: 'manual'});
 
         nunjucksEnv.addExtension('BindExtension', databindExtension);
 
@@ -54,6 +56,7 @@
             var nameSrcDomElement = document.getElementById('nameSrc');
             var addItemDomElement = document.getElementById('add-item');
             var newItemDomElement = document.getElementById('newItem');
+            var refreshDomElement = document.getElementById('refresh');
 
             // Update the displayName value when user types in the nameSrc field
             nameSrcDomElement.addEventListener('keyup', function () {
@@ -65,6 +68,12 @@
                 e.preventDefault();
 
                 data.items.push(newItemDomElement.value);
+            });
+
+            refreshDomElement.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                databindExtension.updateBindings();
             });
         });
     });
