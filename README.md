@@ -3,18 +3,20 @@ DatabindExtension
 
 One-way databinding extension for [Nunjucks templating engine](http://mozilla.github.io/nunjucks/)
 
+Options
+-----
+When constructing the DatabindExtension, you can supply the following options:
+**updateMode**, Determines how the bindings are updated. Can be either 'auto' or 'manual'. Default is 'auto'.
+**bindElementPrefix**, The prefix for binding wrapper elements. Default is 'boundelement-'
 
 Usage
 -----
-To use the extension you must create a Nunjucks environment and add the `DatabindExtension`
+To use the extension you must create a Nunjucks environment and add the `DatabindExtension` extension
 ```javascript
-var nunjucksEnv = new nunjucks.Environment(
-    new nunjucks.WebLoader( '/templates' ),
-    {
-        autoescape: true
-    }
-);
-nunjucksEnv.addExtension( 'BindExtension', new DatabindExtension() );
+var nunjucksEnv = new nunjucks.Environment(new nunjucks.WebLoader('/templates'), {
+	autoescape: true
+});
+nunjucksEnv.addExtension('BindExtension', new DatabindExtension({}));
 ```
 
 The `DatabindExtension` extensions provides a `bind` tag for you to use in your templates
@@ -40,3 +42,5 @@ Any content within the `{% bind %}{% endBind %}` tags will be automatically re-r
 ```
 
 Including `"items"` tells the extension to only update this part of the template when the corresponding `items` attribute is modified.
+
+If you choose to update bindings manually (when specifying updateMode: 'manual'), you will have to call the `updateBindings` method.
