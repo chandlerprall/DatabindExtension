@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-
+<html lang="en">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Databind Extension</title>
+
     <style type="text/css">
         html {
             box-sizing: border-box;
@@ -19,6 +21,7 @@
             background-color: rgb(255, 255, 220);
         }
     </style>
+
     <script type="text/javascript" src="./js/nunjucks.min.js"></script>
     <script type="text/javascript" src="DatabindExtension.js"></script>
 </head>
@@ -36,14 +39,13 @@
         });
 
         var databindExtension = new DatabindExtension();
-
         nunjucksEnv.addExtension('BindExtension', databindExtension);
 
         // Object used for rendering templates
-        var data = {
+        var data = databindExtension.createContext({
             displayName: 'person',
             items: ['Test1', 'Test2']
-        };
+        });
 
         // Fetch the template & render
         var template = nunjucksEnv.getTemplate('pageTemplate.njk');
