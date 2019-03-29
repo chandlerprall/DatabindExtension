@@ -1,0 +1,19 @@
+{
+  "name": "nunjucks-databind",
+  "version": "1.0.0",
+  "description": "One way data binding for nunjucks",
+  "main": "DatabindExtension.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chandlerprall/DatabindExtension.git"
+  },
+  "author": "chandlerprall",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/chandlerprall/DatabindExtension/issues"
+  },
+  "homepage": "https://github.com/chandlerprall/DatabindExtension#readme"
+}
