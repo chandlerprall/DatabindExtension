@@ -35,10 +35,65 @@ var DatabindExtension = function (options) {
     this.tags = ['bind'];
     this.bindElementPrefix = options.bindElementPrefix || 'boundelement-';
     this.updateMode = options.updateMode || 'auto';
+    if (this.updateMode === 'auto') {
+        this.updateMode = DatabindExtension.determineUpdateMode();
+    }
+
     this.bindings = [];
     this.currentId = 0;
 
-    this.scheduleUpdate();
+    this.updateBindings();
+};
+
+DatabindExtension.determineUpdateMode = function () {
+    if (DatabindExtension.detectProxyFeature()) {
+        return 'proxy';
+    } else if (DatabindExtension.detectSetTimeoutFeature()) {
+        return 'poll';
+    }
+
+    return 'manual';
+};
+
+DatabindExtension.detectProxyFeature = function () {
+    return typeof (window['Proxy']) === 'function';
+};
+
+DatabindExtension.detectSetTimeoutFeature = function () {
+    return typeof (window['setTimeout']) === 'function';
+};
+
+DatabindExtension.prototype.createContext = function (context) {
+    if (this.updateMode !== 'proxy') {
+        return context;
+    }
+
+    var self = this;
+
+    function replaceByProxy(obj) {
+        for (var property in obj) {
+            if (obj.hasOwnProperty(property) === false) {
+                continue;
+            }
+
+            if (Array.isArray(obj[property]) || typeof (obj[property]) === 'object') {
+                obj[property] = new Proxy(obj[property], self);
+
+                if (typeof (obj[property]) === 'object') {
+                    replaceByProxy(obj[property]);
+                }
+            }
+        }
+
+        return new Proxy(obj, self);
+    }
+
+    return replaceByProxy(context);
+};
+
+DatabindExtension.prototype.set = function (obj, prop, value) {
+    obj[prop] = value;
+    this.updateBindings(true);
 };
 
 DatabindExtension.prototype.getId = function () {
@@ -85,16 +140,18 @@ DatabindExtension.prototype.unbind = function (context) {
     }
 };
 
-DatabindExtension.prototype.updateBindings = function () {
-    for (var i = 0; i < this.bindings.length; i++) {
-        var binding = this.bindings[i];
+DatabindExtension.prototype.updateBinding = function (binding, force = false) {
+    if (force === true || binding.isDirty()) {
+        binding.render();
+    }
+};
 
-        if (binding.isDirty()) {
-            binding.render();
-        }
+DatabindExtension.prototype.updateBindings = function (force = false) {
+    for (var i = 0; i < this.bindings.length; i++) {
+        this.updateBinding(this.bindings[i], force);
     }
 
-    if (this.updateMode !== 'manual') {
+    if (this.updateMode === 'poll') {
         this.scheduleUpdate();
     }
 };
