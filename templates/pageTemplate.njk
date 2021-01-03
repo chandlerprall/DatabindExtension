@@ -1,6 +1,21 @@
 <h1>Hello</h1>
+
+<h2>One Child Test</h2>
 {% bind "displayName" %}
-    <p>So glad you could make it, {{ displayName }}</p>
+    <p>This is part of a sentence, followed by your name: {{ displayName }}</p>
 {% endbind %}
 
+<h2>Multiple Children Test</h2>
+{% bind "displayName" %}
+    <span>My name is {{ displayName }}</span><br/>
+    <span>His name is {{ displayName }}</span><br/>
+    <span>Her name is {{ displayName }}</span>
+{% endbind %}
+
+<h2>Text Child Test</h2>
+{% bind "displayName" %}
+    Without starting any tag, {{ displayName }} decided it was time to type some text
+{% endbind %}
+
+<h2>List Test</h2>
 {% include "list.njk" %}

@@ -28,7 +28,7 @@ var context = databindExtension.createContext({
 });
 ```
 
-The `DatabindExtension` extensions provides a `bind` tag for you to use in your templates
+The `DatabindExtension` extensions provides a `bind` tag for you to use in your templates. This will add a data-nunjucks-databind tag to any first-level children elements
 ```html
 {% bind %}
     <ul>
@@ -54,8 +54,8 @@ Including `"items"` tells the extension to only update this part of the template
 
 Methods
 -----
-####createContext(context)
+###createContext(context)
 Create a context object based on an input object which is monitored for changes
 
-####updateBindings([force])
+###updateBindings([force])
 Update bindings if they have changed. Set `force` to true to force the update regardless of change

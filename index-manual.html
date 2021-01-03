@@ -21,6 +21,7 @@
             background-color: rgb(255, 255, 220);
         }
     </style>
+
     <script type="text/javascript" src="./js/nunjucks.min.js"></script>
     <script type="text/javascript" src="DatabindExtension.js"></script>
 </head>
@@ -33,52 +34,57 @@
 <button id="refresh">Refresh Data</button>
 
 <script type="text/javascript">
-    window.addEventListener('load', function () {
-        // Create Nunjucks environment with the databinding extension
-        var nunjucksEnv = new nunjucks.Environment(new nunjucks.WebLoader('./templates'), {
-            autoescape: true
-        });
-
-        var databindExtension = new DatabindExtension({updateMode: 'manual'});
-
-        nunjucksEnv.addExtension('BindExtension', databindExtension);
-
-        // Object used for rendering templates
-        var data = {
-            displayName: 'person',
-            items: ['Test1', 'Test2']
-        };
-
-        // Fetch the template & render
-        var template = nunjucksEnv.getTemplate('pageTemplate.njk');
-        template.render(data, function (error, result) {
-            var containerDomElement = document.getElementById('container');
-            containerDomElement.innerHTML = result;
-
-            var nameSrcDomElement = document.getElementById('nameSrc');
-            var addItemDomElement = document.getElementById('add-item');
-            var newItemDomElement = document.getElementById('newItem');
-            var refreshDomElement = document.getElementById('refresh');
-
-            // Update the displayName value when user types in the nameSrc field
-            nameSrcDomElement.addEventListener('keyup', function () {
-                data.displayName = this.value;
-            });
-
-            // Event delegation for adding items to the list
-            addItemDomElement.addEventListener('click', function (e) {
-                e.preventDefault();
-
-                data.items.push(newItemDomElement.value);
-            });
-
-            refreshDomElement.addEventListener('click', function (e) {
-                e.preventDefault();
-
-                databindExtension.updateBindings();
-            });
-        });
+  window.addEventListener('load', function() {
+    // Create Nunjucks environment with the databinding extension
+    var nunjucksEnv = new nunjucks.Environment(new nunjucks.WebLoader('./templates'), {
+      autoescape: true,
     });
+
+    var databindExtension = new DatabindExtension({updateMode: 'manual'});
+
+    nunjucksEnv.addExtension('BindExtension', databindExtension);
+
+    // Object used for rendering templates
+    var data = {
+      displayName: 'person',
+      items: ['Test1', 'Test2'],
+    };
+
+    // Fetch the template & render
+    var template = nunjucksEnv.getTemplate('pageTemplate.njk');
+    template.render(data, function(error, result) {
+      if (!!error) {
+        console.error(error);
+        return;
+      }
+
+      var containerDomElement = document.getElementById('container');
+      containerDomElement.innerHTML = result;
+
+      var nameSrcDomElement = document.getElementById('nameSrc');
+      var addItemDomElement = document.getElementById('add-item');
+      var newItemDomElement = document.getElementById('newItem');
+      var refreshDomElement = document.getElementById('refresh');
+
+      // Update the displayName value when user types in the nameSrc field
+      nameSrcDomElement.addEventListener('keyup', function() {
+        data.displayName = this.value;
+      });
+
+      // Event delegation for adding items to the list
+      addItemDomElement.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        data.items.push(newItemDomElement.value);
+      });
+
+      refreshDomElement.addEventListener('click', function(e) {
+        e.preventDefault();
+
+        databindExtension.updateBindings();
+      });
+    });
+  });
 </script>
 </body>
 
