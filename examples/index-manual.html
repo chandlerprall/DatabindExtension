@@ -40,15 +40,15 @@
       autoescape: true,
     });
 
-    var databindExtension = new DatabindExtension({updateMode: 'manual'});
+    var databindExtension = new DatabindExtension({updateMode: 'poll'});
 
     nunjucksEnv.addExtension('BindExtension', databindExtension);
 
     // Object used for rendering templates
-    var data = {
+    var data = databindExtension.createContext({
       displayName: 'person',
       items: ['Test1', 'Test2'],
-    };
+    });
 
     // Fetch the template & render
     var template = nunjucksEnv.getTemplate('pageTemplate.njk');

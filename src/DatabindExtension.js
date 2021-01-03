@@ -1,5 +1,6 @@
 const Binding = require('./Binding');
 const ContextProxyHandler = require('./ContextProxyHandler');
+const Hooks = require('./Hooks');
 
 class DatabindExtension {
   constructor(options) {
@@ -15,6 +16,7 @@ class DatabindExtension {
     this.currentId = 0;
 
     this.updateBindings();
+    Hooks.setup();
   }
 
   deepProxify(obj) {
@@ -36,13 +38,12 @@ class DatabindExtension {
   }
 
   createContext(ctx) {
+    ctx['__nunjucks_databind_ctx'] = true;
     if (this.updateMode !== 'proxy') {
       return ctx;
     }
 
-    const proxyContext = this.deepProxify(ctx);
-    proxyContext['__nunjucks_databind_proxy'] = true;
-    return proxyContext;
+    return this.deepProxify(ctx);
   }
 
   getId() {
