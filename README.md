@@ -8,7 +8,6 @@ Options
 When constructing the DatabindExtension, you can supply the following options:
 
 * **updateMode**, Determines how the bindings are updated. Can be 'auto', 'proxy', 'pull' or 'manual'. Default is 'auto' which will detect the best approach based on browser features.
-* **bindElementPrefix**, The prefix for binding wrapper elements. Default is 'boundelement-'
 
 Usage
 -----
@@ -52,10 +51,10 @@ Any content within the `{% bind %}{% endBind %}` tags will be automatically re-r
 
 Including `"items"` tells the extension to only update this part of the template when the corresponding `items` attribute is modified.
 
-Methods
+Instance Methods
 -----
-###createContext(context)
+**createContext(context)**
 Create a context object based on an input object which is monitored for changes
 
-###updateBindings([force])
+**updateBindings([force])**
 Update bindings if they have changed. Set `force` to true to force the update regardless of change
