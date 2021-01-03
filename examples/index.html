@@ -22,16 +22,14 @@
         }
     </style>
 
-    <script type="text/javascript" src="./js/nunjucks.min.js"></script>
-    <script type="text/javascript" src="DatabindExtension.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/nunjucks@3.2.2/browser/nunjucks.js"></script>
+    <script type="text/javascript" src="../dist/DatabindExtension.js"></script>
 </head>
 
 <body>
 <input type="text" value="person" id="nameSrc"/>
 
 <div id="container"></div>
-<br/>
-<button id="refresh">Refresh Data</button>
 
 <script type="text/javascript">
   window.addEventListener('load', function() {
@@ -40,15 +38,14 @@
       autoescape: true,
     });
 
-    var databindExtension = new DatabindExtension({updateMode: 'manual'});
-
+    var databindExtension = new DatabindExtension();
     nunjucksEnv.addExtension('BindExtension', databindExtension);
 
     // Object used for rendering templates
-    var data = {
+    var data = databindExtension.createContext({
       displayName: 'person',
       items: ['Test1', 'Test2'],
-    };
+    });
 
     // Fetch the template & render
     var template = nunjucksEnv.getTemplate('pageTemplate.njk');
@@ -64,7 +61,6 @@
       var nameSrcDomElement = document.getElementById('nameSrc');
       var addItemDomElement = document.getElementById('add-item');
       var newItemDomElement = document.getElementById('newItem');
-      var refreshDomElement = document.getElementById('refresh');
 
       // Update the displayName value when user types in the nameSrc field
       nameSrcDomElement.addEventListener('keyup', function() {
@@ -76,12 +72,6 @@
         e.preventDefault();
 
         data.items.push(newItemDomElement.value);
-      });
-
-      refreshDomElement.addEventListener('click', function(e) {
-        e.preventDefault();
-
-        databindExtension.updateBindings();
       });
     });
   });
