@@ -1,6 +1,6 @@
 {
   "name": "nunjucks-databind",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "One way data binding for nunjucks",
   "main": "dist/DatabindExtension.js",
   "scripts": {
