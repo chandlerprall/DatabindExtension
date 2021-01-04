@@ -5,7 +5,7 @@ class ContextProxyHandler {
 
   set(obj, prop, value) {
     if (obj[prop] === value) {
-      return;
+      return true;
     }
 
     obj[prop] = value;

@@ -109,7 +109,7 @@ var ContextProxyHandler = /*#__PURE__*/function () {
     key: "set",
     value: function set(obj, prop, value) {
       if (obj[prop] === value) {
-        return;
+        return true;
       }
 
       obj[prop] = value;
