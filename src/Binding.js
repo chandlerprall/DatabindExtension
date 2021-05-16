@@ -1,3 +1,5 @@
+const morphdom = require('morphdom');
+
 class Binding {
   constructor(elementId, context, contextParameter, renderTemplate) {
     this.elementId = elementId;
@@ -58,11 +60,10 @@ class Binding {
     const elements = document.querySelectorAll('[data-nunjucks-databinding="' + this.elementId + '"]');
     if (!!elements) {
       const dummyElement = this.htmlToDummy(this.renderTemplate());
+      const newElements = dummyElement.querySelectorAll('[data-nunjucks-databinding="' + this.elementId + '"]');
 
-      // TODO: What if amount of children is not the same anymore?
-      // TODO: What if other scripts have played with the DOM, changed children or such?
       for (let i = 0; i < elements.length; i++) {
-        elements[i].parentNode.replaceChild(dummyElement.children[i], elements[i]);
+        morphdom(elements[i], newElements[i]);
       }
     }
 

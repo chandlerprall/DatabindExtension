@@ -61,6 +61,7 @@
       var nameSrcDomElement = document.getElementById('nameSrc');
       var addItemDomElement = document.getElementById('add-item');
       var newItemDomElement = document.getElementById('newItem');
+      var eventTestDomElement = document.getElementById('event-test-button');
 
       // Update the displayName value when user types in the nameSrc field
       nameSrcDomElement.addEventListener('keyup', function() {
@@ -72,6 +73,11 @@
         e.preventDefault();
 
         data.items.push(newItemDomElement.value);
+      });
+
+      eventTestDomElement.addEventListener('click', function(e) {
+        e.preventDefault();
+        alert('Still Works!');
       });
     });
   });

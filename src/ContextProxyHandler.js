@@ -9,7 +9,7 @@ class ContextProxyHandler {
     }
 
     obj[prop] = value;
-    this.owner.updateBindings(true);
+    this.owner.updateBindings();
 
     return true;
   }

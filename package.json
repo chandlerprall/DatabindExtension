@@ -1,6 +1,6 @@
 {
   "name": "nunjucks-databind",
-  "version": "2.1.2",
+  "version": "2.2.0",
   "description": "One way data binding for nunjucks",
   "main": "dist/DatabindExtension.js",
   "scripts": {
@@ -17,11 +17,12 @@
   },
   "homepage": "https://github.com/chandlerprall/DatabindExtension#readme",
   "devDependencies": {
-    "@types/nunjucks": "^3.1.3",
+    "@babel/core": "^7.14.2",
+    "@babel/preset-env": "^7.14.2",
+    "@types/nunjucks": "^3.1.4",
     "babelify": "^10.0.0",
-    "@babel/core": "^7.12.10",
-    "@babel/preset-env": "^7.12.11",
     "gulp": "^4.0.2",
-    "gulp-bro": "^2.0.0"
+    "gulp-bro": "^2.0.0",
+    "morphdom": "^2.6.1"
   }
 }

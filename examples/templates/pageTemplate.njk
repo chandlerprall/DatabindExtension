@@ -19,3 +19,11 @@
 
 <h2>List Test</h2>
 {% include "list.njk" %}
+
+<h2>Event Test</h2>
+{% bind "displayName" %}
+    <div>
+        When the value {{ displayName }} changes, the event of the button still exist
+        <input type="button" value="Click Me" id="event-test-button"/>
+    </div>
+{% endbind %}
