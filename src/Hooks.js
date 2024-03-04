@@ -1,24 +1,25 @@
 class Hooks {
-  static setup() {
-    if (Hooks.isSetup === true) {
-      return;
+    static setup(ext) {
+        if (Hooks.isSetup === true) {
+            return;
+        }
+
+        Hooks.ext = ext;
+
+        if (!!window['nunjucks']) {
+            if (!!window['nunjucks']['Template']) {
+                window['nunjucks']['Template'].prototype.renderToDom = Hooks.ext.templateRenderToDom;
+            }
+
+            if (!!window['nunjucks']['Environment']) {
+                window['nunjucks']['Environment'].prototype.renderToDom = Hooks.ext.environmentRenderToDom;
+            }
+
+            window['nunjucks'].renderToDom = Hooks.ext.renderToDom;
+        }
+
+        Hooks.isSetup = true;
     }
-
-    if (!!window['nunjucks'] && !!window['nunjucks']['lib']) {
-      Hooks.oldLibExtend = window['nunjucks']['lib']['extend'];
-      window['nunjucks']['lib']['extend'] = Hooks.libExtend.bind(this);
-    }
-
-    Hooks.isSetup = true;
-  }
-
-  static libExtend(obj1, obj2) {
-    if (obj2.hasOwnProperty('__nunjucks_databind_ctx')) {
-      return obj2;
-    }
-
-    return Hooks.oldLibExtend(obj1, obj2);
-  }
 }
 
 module.exports = Hooks;

@@ -1,29 +1,44 @@
 <h1>Hello</h1>
 
 <h2>One Child Test</h2>
-{% bind "displayName" %}
-    <p>This is part of a sentence, followed by your name: {{ displayName }}</p>
-{% endbind %}
+<p>This is part of a sentence, followed by your name: {{ displayName }}</p>
+
 
 <h2>Multiple Children Test</h2>
-{% bind "displayName" %}
-    <span>My name is {{ displayName }}</span><br/>
-    <span>His name is {{ displayName }}</span><br/>
-    <span>Her name is {{ displayName }}</span>
-{% endbind %}
+<span>My name is {{ displayName }}</span><br/>
+<span>His name is {{ displayName }}</span><br/>
+<span>Her name is {{ displayName }}</span>
+
 
 <h2>Text Child Test</h2>
-{% bind "displayName" %}
-    Without starting any tag, {{ displayName }} decided it was time to type some text
-{% endbind %}
+Without starting any tag, {{ displayName }} decided it was time to type some text
 
-<h2>List Test</h2>
+<h2>If Test</h2>
+{% if displayName | length < 3 %}
+    Display name is shorter than 3 characters
+{% elseif displayName | length < 6 %}
+    Display name is shorter than 6 characters
+{% elseif displayName | length < 9 %}
+    Display name is shorter than 9 characters
+{% else %}
+    Display name is 9 characters or longer
+
+    {% if customCheck %}
+        Checkbox is checked
+    {% endif %}
+{% endif %}
+
+<h2>For Test</h2>
+{% for item in items %}
+    <li>{{ item }}</li>
+{% endfor %}
+
+
+<h2>Include Test</h2>
 {% include "list.njk" %}
 
 <h2>Event Test</h2>
-{% bind "displayName" %}
-    <div>
-        When the value {{ displayName }} changes, the event of the button still exist
-        <input type="button" value="Click Me" id="event-test-button"/>
-    </div>
-{% endbind %}
+<div>
+    When the value {{ displayName }} changes, the event of the button still exist
+    <input type="button" value="Click Me" id="event-test-button"/>
+</div>

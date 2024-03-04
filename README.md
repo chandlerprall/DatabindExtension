@@ -1,25 +1,24 @@
-DatabindExtension
-=================
+# DatabindExtension 3.0.0
 
 One-way databinding extension for [Nunjucks templating engine](http://mozilla.github.io/nunjucks/)
 
-Options
------
+## Options
 When constructing the DatabindExtension, you can supply the following options:
 
-* **updateMode**, Determines how the bindings are updated. Can be 'auto', 'proxy', 'pull' or 'manual'. Default is 'auto' which will detect the best approach based on browser features.
+* **updateMode**, Determines how the bindings are updated. Can be 'auto', 'proxy', or 'manual'. Default 'auto' which in
+  most browser means proxy.
 
-Usage
------
-To use the extension you must create a Nunjucks environment and add the `DatabindExtension` extension
+## Usage
+To use the extension you do _not_ need to use the nunjucks environment addExtension method like a traditional extension.
+You need to instantiate the DatabindExtension class which will add a few methods to the global nunjucks instance, to the
+environment class and to the template class for convenience.
+
 ```javascript
-var nunjucksEnv = new nunjucks.Environment(new nunjucks.WebLoader('/templates'), {
-    autoescape: true
-});
-nunjucksEnv.addExtension('BindExtension', new DatabindExtension({}));
+const databindExtension = new DatabindExtension({});
 ```
 
-Then, you create the context for nunjucks a little differently:
+Then, create the context:
+
 ```javascript
 var context = databindExtension.createContext({
     displayName: 'person',
@@ -27,34 +26,26 @@ var context = databindExtension.createContext({
 });
 ```
 
-The `DatabindExtension` extensions provides a `bind` tag for you to use in your templates. This will add a data-nunjucks-databind tag to any first-level children elements
-```html
-{% bind %}
-    <ul>
-    {% for item in items %}
-        <li>{{item}}</li>
-    {% endfor %}
-    </ul>
-{% endbind %}
-```
+Then, use one of three methods to render the template. DatabindExtension requires you to provide your target DOM element
+and will place the render result inside this DOM element.
+It's possible to pass `document.body` as the node argument depending on your needs.
 
-Any content within the `{% bind %}{% endBind %}` tags will be automatically re-rendered when the template's data object changes. However, doing a full render whenever any part of the object is modified is far from optimal and can have unintended side effects, so the `{% bind %}` tag accepts an optional parameter indicating what part of the object needs to change to trigger a re-render.
-```html
-{% bind "items" %}
-    <ul>
-    {% for item in items %}
-        <li>{{item}}</li>
-    {% endfor %}
-    </ul>
-{% endbind %}
+### nunjucks.renderToDom()
+```javascript
+nunjucks.renderToDom()
 ```
-
-Including `"items"` tells the extension to only update this part of the template when the corresponding `items` attribute is modified.
+### environment.renderToDom()
+```javascript
+// ... Code to setup the environment 
+environment.renderToDom() // In case you instantiated your own environment manually.
+```
+### template.renderToDom()
+```javascript
+// ... Code to load the template 
+template.renderToDom() // In case you instantiated your own environment manually.
+```
 
 Instance Methods
 -----
 **createContext(context)**
 Create a context object based on an input object which is monitored for changes
-
-**updateBindings([force])**
-Update bindings if they have changed. Set `force` to true to force the update regardless of change

@@ -1,10 +1,8 @@
-{% bind "items" %}
-    <ul>
-        {% for item in items %}
-            <li>{{ item }}</li>
-        {% endfor %}
-    </ul>
-{% endbind %}
+<ul>
+    {% for item in items %}
+        <li>{{ item }}</li>
+    {% endfor %}
+</ul>
 
 <input type="text" id="newItem"/>
 <button id="add-item">Add</button>

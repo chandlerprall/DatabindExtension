@@ -1,136 +1,206 @@
-const Binding = require('./Binding');
-const ContextProxyHandler = require('./ContextProxyHandler');
+const morphdom = require('morphdom');
+
+const transformer = require('nunjucks/src/transformer'); // TODO: Try to get rid of this require!
+
 const Hooks = require('./Hooks');
+const ContextProxyHandler = require('./ContextProxyHandler');
+const ContextHolder = require('./ContextHolder');
 
 class DatabindExtension {
-  constructor(options) {
-    options = options || {};
-
-    this.tags = ['bind'];
-    this.updateMode = options.updateMode || 'auto';
-    if (this.updateMode === 'auto') {
-      this.updateMode = DatabindExtension.determineUpdateMode();
-    }
-
-    this.bindings = [];
-    this.currentId = 0;
-
-    this.updateBindings();
-    Hooks.setup();
-  }
-
-  deepProxify(obj) {
-    for (const property in obj) {
-      if (obj.hasOwnProperty(property) === false) {
-        continue;
-      }
-
-      if (Array.isArray(obj[property]) || typeof (obj[property]) === 'object') {
-        obj[property] = new Proxy(obj[property], new ContextProxyHandler(this));
-
-        if (typeof (obj[property]) === 'object') {
-          this.deepProxify(obj[property]);
+    static determineUpdateMode() {
+        if (DatabindExtension.detectProxyFeature()) {
+            return 'proxy';
         }
-      }
+
+        return 'manual';
     }
 
-    return new Proxy(obj, new ContextProxyHandler(this));
-  }
-
-  createContext(ctx) {
-    ctx['__nunjucks_databind_ctx'] = true;
-    if (this.updateMode !== 'proxy') {
-      return ctx;
+    static detectProxyFeature() {
+        return typeof (window['Proxy']) === 'function';
     }
 
-    return this.deepProxify(ctx);
-  }
-
-  getId() {
-    return this.currentId++;
-  }
-
-  parse(parser, nodes) {
-    // get the tag token
-    const tok = parser.nextToken();
-
-    // parse the args and move after the block end. passing true as the second arg is required if there are no parentheses
-    const args = parser.parseSignature(null, true);
-    parser.advanceAfterBlockEnd(tok.value);
-
-    // parse the body and possibly the error block, which is optional
-    const body = parser.parseUntilBlocks('endbind');
-
-    parser.advanceAfterBlockEnd();
-
-    // See above for notes about CallExtension
-    return new nodes.CallExtension(this, 'run', args, [body, null]);
-  }
-
-  run(context, contextParameter, body) {
-    if (body === null) {
-      body = contextParameter;
-      contextParameter = null;
+    renderToDom(name, ctx, node, cb) {
+        this.environmentRenderToDom(name, ctx, node, cb);
     }
 
-    const id = this.getId();
-    const binding = new Binding(id, context.ctx, contextParameter, body);
-    const dummyElement = binding.htmlToDummy(body());
-    this.bindings.push(binding);
+    environmentRenderToDom(name, ctx, node, cb) {
+        if (typeof (ctx) === 'function') {
+            cb = ctx;
+            ctx = null;
+        }
 
-    return new nunjucks.runtime.SafeString(dummyElement.innerHTML);
-  }
+        window['nunjucks']['Environment'].getTemplate(name, (err, tmpl) => {
+            if (!!err) {
+                cb(err);
+                return;
+            }
 
-  unbind(context) {
-    for (let i = 0; i < this.bindings.length; i++) {
-      if (this.bindings[i].context === context) {
-        this.bindings.splice(i, 1);
-        i--;
-      }
-    }
-  }
-
-  updateBinding(binding, force = false) {
-    if (force === true || binding.isDirty()) {
-      binding.render();
-    }
-  }
-
-  updateBindings(force = false) {
-    for (let i = 0; i < this.bindings.length; i++) {
-      this.updateBinding(this.bindings[i], force);
+            tmpl.templateRenderToDom(ctx, node, cb).then(r => {
+            });
+        });
     }
 
-    if (this.updateMode === 'poll') {
-      this.scheduleUpdate();
+    static createContextUsageMap(map, context, node) {
+        console.log(node['typename'], node);
+        node.typename2 = node.typename;
+
+        if (node['typename'] === 'Symbol') {
+            if (Array.isArray(map[node.value]) === false) {
+                map[node.value] = [];
+            }
+
+            map[node.value].push(node);
+        } else if (node['typename'] === 'For') {
+            if (Array.isArray(map[node.arr.value]) === false) {
+                map[node.arr.value] = [];
+            }
+
+            map[node.arr.value].push(node);
+        }
+
+        // For If Nodes
+        if (!!node['cond'] && !!node['cond']['expr'] && !!node['cond']['expr']['args']) {
+            for (let i = 0; i < node.cond.expr.args.children.length; i++) {
+                const child = node.cond.expr.args.children[i];
+                child.parent = node; // TODO: It's necessary to assign the parent node, but is this the best place to do so?
+                DatabindExtension.createContextUsageMap(map, context, child);
+            }
+        }
+
+        // For any node with "regular" children
+        if (!!node['children']) {
+            for (let i = 0; i < node.children.length; i++) {
+                const child = node.children[i];
+                child.parent = node; // TODO: It's necessary to assign the parent node, but is this the best place to do so?
+                DatabindExtension.createContextUsageMap(map, context, child);
+            }
+        }
     }
-  }
 
-  scheduleUpdate() {
-    if (window.requestAnimationFrame) {
-      requestAnimationFrame(this.updateBindings.bind(this));
-    } else {
-      setTimeout(this.updateBindings.bind(this), 1 / 60);
+    async templateRenderToDom(ctx, node, cb) {
+        if (ctx.hasOwnProperty('__nunjucks_databind_ctx') === false) {
+            throw new Error('renderToDom can only be used with a context coming from createContext().');
+        }
+
+        const rootNode = window['nunjucks']['parser']['parse'](this['tmplStr'], this['env']['extensionsList'], this['env']['opts']);
+
+        const contextUsageMap = {};
+        DatabindExtension.createContextUsageMap(contextUsageMap, ctx, rootNode);
+
+        const context = new ContextHolder(ctx, this['blocks'], this['env']);
+
+        for (let i = 0; i < rootNode.children.length; i++) {
+            DatabindExtension.addRenderMethodsToNode(rootNode.children[i], this, context);
+        }
+
+        node.innerHTML = await DatabindExtension.renderNodes(rootNode);
+
+
+        ContextProxyHandler.addListener(ctx, async (prop, value) => {
+            if (contextUsageMap.hasOwnProperty(prop)) {
+                for (let i = 0; i < contextUsageMap[prop].length; i++) {
+                    if (contextUsageMap[prop][i].hasOwnProperty('invalidateRenderCache')) {
+                        contextUsageMap[prop][i].invalidateRenderCache();
+                    } else {
+                        contextUsageMap[prop][i].parent.invalidateRenderCache();
+                    }
+                }
+            }
+
+            const updatedHtml = await DatabindExtension.renderNodes(rootNode);
+            morphdom(node, `<div>${updatedHtml}</div>`, {childrenOnly: true});
+        });
+
+        cb(null);
     }
-  }
 
-  static determineUpdateMode() {
-    if (DatabindExtension.detectProxyFeature()) {
-      return 'proxy';
-    } else if (DatabindExtension.detectSetTimeoutFeature()) {
-      return 'poll';
+    static addRenderMethodsToNode(node, self, context) {
+        node.render = async function () {
+            if (!!this._renderCache) {
+                return this._renderCache;
+            }
+
+            const c = new window['nunjucks']['compiler']['Compiler']('noop');
+
+            const frame = new window['nunjucks']['runtime'].Frame();
+            c._emitFuncBegin(this, 'renderNode');
+            c.compile(transformer.transform(
+                this,
+                [],
+                'noop'
+            ), frame);
+            c._emitFuncEnd();
+            c._emitLine('return {');
+            c._emitLine('renderNode\n};');
+
+            const func = new Function(c.getCode());
+            const result = await new Promise((res, rej) => {
+                func()['renderNode'](self['env'], context, frame, window['nunjucks']['runtime'], (err, output) => {
+                    if (!!err) rej(err);
+                    res(output);
+                });
+            });
+
+            this._renderCache = result;
+            return result;
+        };
+
+        node.invalidateRenderCache = async function () {
+            this._renderCache = null;
+        }
     }
 
-    return 'manual';
-  }
+    static async renderNodes(parsedNodes) {
+        let html = '';
+        for (let i = 0; i < parsedNodes.children.length; i++) {
+            try {
+                html += await parsedNodes.children[i].render();
+            } catch (ex) {
+                console.error(ex);
+            }
+        }
 
-  static detectProxyFeature() {
-    return typeof (window['Proxy']) === 'function';
-  }
+        return html;
+    }
 
-  static detectSetTimeoutFeature() {
-    return typeof (window['setTimeout']) === 'function';
-  }
+    constructor(options) {
+        options = options || {};
+
+        this.updateMode = options.updateMode || 'auto';
+        if (this.updateMode === 'auto') {
+            this.updateMode = DatabindExtension.determineUpdateMode();
+        }
+
+        Hooks.setup(this);
+    }
+
+    deepProxify(obj, root) {
+        if (obj.hasOwnProperty('__nunjucks_databind_ctx')) {
+            return obj;
+        }
+
+        for (const property in obj) {
+            if (obj.hasOwnProperty(property) === false) {
+                continue;
+            }
+
+            if (Array.isArray(obj[property]) || typeof (obj[property]) === 'object') {
+                obj[property]['__nunjucks_databind_ctx'] = true;
+                obj[property] = new Proxy(obj[property], new ContextProxyHandler(root, Array.isArray(obj[property]) ? property : null));
+
+                if (typeof (obj[property]) === 'object') {
+                    this.deepProxify(obj[property], root);
+                }
+            }
+        }
+
+        obj['__nunjucks_databind_ctx'] = true;
+        return new Proxy(obj, new ContextProxyHandler(root));
+    }
+
+    createContext(ctx) {
+        return this.deepProxify(ctx, ctx);
+    }
 }
 
 module.exports = DatabindExtension;
