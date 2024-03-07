@@ -2424,6 +2424,156 @@ process.umask = function() { return 0; };
 },{}],8:[function(require,module,exports){
 "use strict";
 
+const ContextProxyHandler = require('./helpers/ContextProxyHandler');
+const {
+  extendEnvironmentPrototype
+} = require('./hooks/EnvironmentHook');
+const {
+  extendTemplatePrototype
+} = require("./hooks/TemplateHook");
+const {
+  extendNodePrototype
+} = require("./hooks/ASTNodeHook");
+const {
+  extendParserPrototype
+} = require("./hooks/ParserHook");
+class DatabindExtension {
+  constructor(options) {
+    options = options || {};
+    this.updateMode = options.updateMode || 'auto';
+    if (this.updateMode === 'auto') {
+      this.updateMode = 'proxy';
+    }
+    this._extendNunjucks(window['nunjucks']);
+    extendEnvironmentPrototype(window['nunjucks']['Environment'].prototype);
+    extendTemplatePrototype(window['nunjucks']['Template'].prototype);
+    extendNodePrototype(window['nunjucks']['nodes']['Node'].prototype);
+    extendParserPrototype(window['nunjucks']['parser']['Parser'].prototype);
+  }
+  _extendNunjucks(inst) {
+    inst.renderToDom = this.renderToDom;
+  }
+  createContext(ctx) {
+    if (this.updateMode !== 'proxy') {
+      return ctx;
+    }
+    return ContextProxyHandler.createContextProxy(ctx, ctx);
+  }
+  renderToDom(name, ctx, node, cb) {
+    window['nunjucks']['environment'].renderToDom(name, ctx, node, cb);
+  }
+}
+module.exports = DatabindExtension;
+
+},{"./helpers/ContextProxyHandler":11,"./hooks/ASTNodeHook":12,"./hooks/EnvironmentHook":13,"./hooks/ParserHook":14,"./hooks/TemplateHook":15}],9:[function(require,module,exports){
+"use strict";
+
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == typeof i ? i : String(i); }
+function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != typeof i) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+const ContextHolder = require('./helpers/ContextHolder');
+const ContextProxyHandler = require('./helpers/ContextProxyHandler');
+const morphdom = require('morphdom');
+class DatabindTemplate {
+  constructor(template, targetNode, context) {
+    this.template = template;
+    this.targetNode = targetNode;
+    this.context = context;
+    this.ast = null;
+    this.contextHolder = null;
+    this.contextMap = {};
+  }
+  _parseAST(node) {
+    let parent = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
+    if (!(node instanceof window['nunjucks']['nodes']['Node'])) {
+      return;
+    }
+
+    // Assign a parent, needed to invalidate cache recursively in case context changes
+    node._parent = parent;
+
+    // Fetch references
+    if (node['typename'] === 'Symbol') {
+      if (Array.isArray(this.contextMap[node.value]) === false) {
+        this.contextMap[node.value] = [];
+      }
+      this.contextMap[node.value].push(node);
+      return;
+    } else if (node['typename'] === 'Include' || node['typename'] === 'Extends') {
+      const deferredTemplateName = node['template'].value;
+      if (Array.isArray(DatabindTemplate.deferredTemplateMap[deferredTemplateName]) === false) {
+        DatabindTemplate.deferredTemplateMap[deferredTemplateName] = [];
+      }
+      DatabindTemplate.deferredTemplateMap[deferredTemplateName].push({
+        databindTemplate: this,
+        deferredTemplateNode: node
+      });
+      return;
+    } else if (node['typename'] === 'If') {
+      if (!!node['cond'] && !node['cond']['expr']) {
+        if (Array.isArray(this.contextMap[node['cond'].value]) === false) {
+          this.contextMap[node['cond'].value] = [];
+        }
+        this.contextMap[node['cond'].value].push(node);
+      }
+      // Do not return, we want to explore the other fields too!
+    }
+    for (let i = 0; i < node['fields'].length; i++) {
+      const field = node['fields'][i];
+      if (!!node[field]) {
+        if (field === 'children') {
+          for (let j = 0; j < node[field].length; j++) {
+            const childNode = node[field][j];
+            if (typeof childNode['typename'] === 'undefined') {
+              continue;
+            }
+            this._parseAST(childNode, node);
+          }
+        } else if (typeof node[field] === 'object') {
+          this._parseAST(node[field], node);
+        }
+      }
+    }
+  }
+  render(cb) {
+    this.ast = window['nunjucks']['parser']['parse'](this.template['tmplStr'], this.template['env']['extensionsList'], this.template['env']['opts']);
+    this._parseAST(this.ast);
+    this.contextHolder = new ContextHolder(this.context, this.template['blocks'], this.template['env']);
+    this.ast.render(this.contextHolder, (err, html) => {
+      if (!!err) {
+        return cb(err);
+      }
+      this.targetNode.innerHTML = html;
+      ContextProxyHandler.addListener(this.context, this.onContextChange.bind(this));
+      cb(null);
+    });
+  }
+  onContextChange(prop) {
+    if (this.contextMap.hasOwnProperty(prop)) {
+      for (let i = 0; i < this.contextMap[prop].length; i++) {
+        this.contextMap[prop][i].invalidateRenderCache();
+      }
+    }
+    this.ast.render(this.contextHolder, (err, updatedHtml) => {
+      if (!!err) {
+        return;
+      }
+
+      // TODO: morphdom has to create a temp DOM to parse the updatedHTML which is not ideal
+      //  Implementation of vdom would greatly improve performance,
+      //  but requires a major overhaul of how the RenderNodes are implemented
+      morphdom(this.targetNode, "<div>".concat(updatedHtml, "</div>"), {
+        childrenOnly: true
+      });
+    });
+  }
+}
+_defineProperty(DatabindTemplate, "deferredTemplateMap", {});
+module.exports = DatabindTemplate;
+
+},{"./helpers/ContextHolder":10,"./helpers/ContextProxyHandler":11,"morphdom":2}],10:[function(require,module,exports){
+"use strict";
+
 /*
 This class is needed because the Context class from nunjucks is not exposed through the global instance of nunjucks.
 We could import/require it of course, but unfortunately the original Context class makes a copy of the ctx object where we actually want to use a reference
@@ -2487,7 +2637,7 @@ class ContextHolder {
 }
 module.exports = ContextHolder;
 
-},{}],9:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 "use strict";
 
 function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
@@ -2507,6 +2657,24 @@ class ContextProxyHandler {
       }
     }
   }
+  static createContextProxy(obj, root) {
+    if (obj.hasOwnProperty('__nunjucks_databind_ctx')) {
+      return obj;
+    }
+    for (const property in obj) {
+      if (obj.hasOwnProperty(property) === false) {
+        continue;
+      }
+      if (Array.isArray(obj[property]) || typeof obj[property] === 'object') {
+        obj[property] = new Proxy(obj[property], new ContextProxyHandler(root, Array.isArray(obj[property]) ? property : null));
+        if (typeof obj[property] === 'object') {
+          ContextProxyHandler.createContextProxy(obj[property], root);
+        }
+      }
+    }
+    obj['__nunjucks_databind_ctx'] = true;
+    return new Proxy(obj, new ContextProxyHandler(root));
+  }
   constructor(root) {
     let arrayName = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
     this.root = root;
@@ -2524,195 +2692,196 @@ class ContextProxyHandler {
 _defineProperty(ContextProxyHandler, "listeners", {});
 module.exports = ContextProxyHandler;
 
-},{}],10:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 "use strict";
 
-const morphdom = require('morphdom');
-const transformer = require('nunjucks/src/transformer'); // TODO: Try to get rid of this require!
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == typeof i ? i : String(i); }
+function _toPrimitive(t, r) { if ("object" != typeof t || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != typeof i) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+const transformer = require('nunjucks/src/transformer');
+const extendPrototype = require('../utils/extendPrototype');
+const seriesToString = require('../utils/seriesToString');
+class ASTNodeHook {
+  constructor() {
+    _defineProperty(this, "_renderCache", null);
+    _defineProperty(this, "_parent", null);
+  }
+  _compileToHTML(context, cb) {
+    const name = 'rendernode';
+    const c = new window['nunjucks']['compiler']['Compiler'](name);
+    const frame = new window['nunjucks']['runtime'].Frame();
+    c._emitFuncBegin(this, 'renderNode');
+    c.compile(transformer.transform(this, [], name), frame);
+    c._emitFuncEnd();
+    c._emitLine('return {');
+    c._emitLine('renderNode\n};');
+    const func = new Function(c.getCode());
+    func()['renderNode'](context.env, context, frame, window['nunjucks']['runtime'], cb);
+  }
+  invalidateRenderCache() {
+    this._renderCache = null;
+    if (!!this._parent) {
+      this._parent.invalidateRenderCache();
+    }
+  }
+  render(context, cb) {
+    if (!!this._renderCache) {
+      return cb(null, this._renderCache);
+    }
+    if (!this['children'] || this['children'].length === 0 || this['typename'] === 'Output') {
+      return this._compileToHTML(context, (err, output) => {
+        this._renderCache = output;
+        cb(err, output);
+      });
+    }
+    const renderMethods = [];
+    for (let i = 0; i < this['children'].length; i++) {
+      renderMethods.push(this['children'][i].render.bind(this['children'][i], context));
+    }
+    seriesToString(renderMethods, (err, output) => {
+      this._renderCache = output;
+      cb(err, output);
+    });
+  }
+  static extendNodePrototype(nodePrototype) {
+    extendPrototype(nodePrototype, ASTNodeHook);
+  }
+}
+module.exports = ASTNodeHook;
 
-const Hooks = require('./Hooks');
-const ContextProxyHandler = require('./ContextProxyHandler');
-const ContextHolder = require('./ContextHolder');
-class DatabindExtension {
-  static determineUpdateMode() {
-    if (DatabindExtension.detectProxyFeature()) {
-      return 'proxy';
-    }
-    return 'manual';
-  }
-  static detectProxyFeature() {
-    return typeof window['Proxy'] === 'function';
-  }
+},{"../utils/extendPrototype":16,"../utils/seriesToString":17,"nunjucks/src/transformer":6}],13:[function(require,module,exports){
+"use strict";
+
+const extendPrototype = require('../utils/extendPrototype');
+const {
+  deferredTemplateMap
+} = require("../DatabindTemplate");
+class EnvironmentHook {
   renderToDom(name, ctx, node, cb) {
-    this.environmentRenderToDom(name, ctx, node, cb);
-  }
-  environmentRenderToDom(name, ctx, node, cb) {
-    if (typeof ctx === 'function') {
-      cb = ctx;
-      ctx = null;
-    }
-    window['nunjucks']['Environment'].getTemplate(name, (err, tmpl) => {
+    this['getTemplate'](name, (err, tmpl) => {
       if (!!err) {
         cb(err);
         return;
       }
-      tmpl.templateRenderToDom(ctx, node, cb).then(r => {});
+      tmpl.renderToDom(ctx, node, cb);
     });
   }
-  static createContextUsageMap(map, context, node) {
-    console.log(node['typename'], node);
-    node.typename2 = node.typename;
-    if (node['typename'] === 'Symbol') {
-      if (Array.isArray(map[node.value]) === false) {
-        map[node.value] = [];
-      }
-      map[node.value].push(node);
-    } else if (node['typename'] === 'For') {
-      if (Array.isArray(map[node.arr.value]) === false) {
-        map[node.arr.value] = [];
-      }
-      map[node.arr.value].push(node);
-    }
-
-    // For If Nodes
-    if (!!node['cond'] && !!node['cond']['expr'] && !!node['cond']['expr']['args']) {
-      for (let i = 0; i < node.cond.expr.args.children.length; i++) {
-        const child = node.cond.expr.args.children[i];
-        child.parent = node; // TODO: It's necessary to assign the parent node, but is this the best place to do so?
-        DatabindExtension.createContextUsageMap(map, context, child);
-      }
-    }
-
-    // For any node with "regular" children
-    if (!!node['children']) {
-      for (let i = 0; i < node.children.length; i++) {
-        const child = node.children[i];
-        child.parent = node; // TODO: It's necessary to assign the parent node, but is this the best place to do so?
-        DatabindExtension.createContextUsageMap(map, context, child);
+  _parseDeferredTemplate(name, parentName, tmpl) {
+    if (!!parentName && parentName === 'rendernode') {
+      // getTemplate was used to fetch a partial of our main template (e.g. through include or extend)
+      // AST of that template must be parsed and the node causing this method call must be replaced
+      if (deferredTemplateMap.hasOwnProperty(name)) {
+        for (let i = 0; i < deferredTemplateMap[name].length; i++) {
+          const {
+            databindTemplate,
+            deferredTemplateNode
+          } = deferredTemplateMap[name][i];
+          const ast = window['nunjucks']['parser']['parse'](tmpl['tmplStr'], tmpl['env']['extensionsList'], tmpl['env']['opts']);
+          const childIndex = deferredTemplateNode._parent.children.indexOf(deferredTemplateNode);
+          deferredTemplateNode._parent.children[childIndex] = ast;
+          databindTemplate._parseAST(ast, deferredTemplateNode._parent);
+        }
+        delete deferredTemplateMap[name];
       }
     }
   }
-  async templateRenderToDom(ctx, node, cb) {
+  getTemplate(name, eagerCompile, parentName, ignoreMissing, cb) {
+    if (window['nunjucks']['lib'].isFunction(parentName)) {
+      cb = parentName;
+      parentName = null;
+      eagerCompile = eagerCompile || false;
+    }
+    if (window['nunjucks']['lib'].isFunction(eagerCompile)) {
+      cb = eagerCompile;
+      eagerCompile = false;
+    }
+    if (!!cb) {
+      this['_originalProperties']['getTemplate'].call(this, name, eagerCompile, parentName, ignoreMissing, (err, tmpl) => {
+        this._parseDeferredTemplate(name, parentName, tmpl);
+        cb(err, tmpl);
+      });
+    } else {
+      const tmpl = this['_originalProperties']['getTemplate'].call(this, name, eagerCompile, parentName, ignoreMissing);
+      this._parseDeferredTemplate(name, parentName, tmpl);
+      return tmpl;
+    }
+  }
+  static extendEnvironmentPrototype(environmentPrototype) {
+    extendPrototype(environmentPrototype, EnvironmentHook);
+  }
+}
+module.exports = EnvironmentHook;
+
+},{"../DatabindTemplate":9,"../utils/extendPrototype":16}],14:[function(require,module,exports){
+"use strict";
+
+const extendPrototype = require('../utils/extendPrototype');
+class ParserHook {
+  parseInclude() {
+    const node = this['_originalProperties']['parseInclude'].call(this);
+    console.log(node);
+    return node;
+  }
+  static extendParserPrototype(parserPrototype) {
+    //extendPrototype(parserPrototype, ParserHook);
+  }
+}
+module.exports = ParserHook;
+
+},{"../utils/extendPrototype":16}],15:[function(require,module,exports){
+"use strict";
+
+const extendPrototype = require('../utils/extendPrototype');
+const DatabindTemplate = require("../DatabindTemplate");
+class TemplateHook {
+  renderToDom(ctx, node, cb) {
     if (ctx.hasOwnProperty('__nunjucks_databind_ctx') === false) {
       throw new Error('renderToDom can only be used with a context coming from createContext().');
     }
-    const rootNode = window['nunjucks']['parser']['parse'](this['tmplStr'], this['env']['extensionsList'], this['env']['opts']);
-    const contextUsageMap = {};
-    DatabindExtension.createContextUsageMap(contextUsageMap, ctx, rootNode);
-    const context = new ContextHolder(ctx, this['blocks'], this['env']);
-    for (let i = 0; i < rootNode.children.length; i++) {
-      DatabindExtension.addRenderMethodsToNode(rootNode.children[i], this, context);
-    }
-    node.innerHTML = await DatabindExtension.renderNodes(rootNode);
-    ContextProxyHandler.addListener(ctx, async (prop, value) => {
-      if (contextUsageMap.hasOwnProperty(prop)) {
-        for (let i = 0; i < contextUsageMap[prop].length; i++) {
-          if (contextUsageMap[prop][i].hasOwnProperty('invalidateRenderCache')) {
-            contextUsageMap[prop][i].invalidateRenderCache();
-          } else {
-            contextUsageMap[prop][i].parent.invalidateRenderCache();
-          }
-        }
-      }
-      const updatedHtml = await DatabindExtension.renderNodes(rootNode);
-      morphdom(node, "<div>".concat(updatedHtml, "</div>"), {
-        childrenOnly: true
-      });
-    });
-    cb(null);
+    const databindTemplate = new DatabindTemplate(this, node, ctx);
+    databindTemplate.render(cb);
   }
-  static addRenderMethodsToNode(node, self, context) {
-    node.render = async function () {
-      if (!!this._renderCache) {
-        return this._renderCache;
-      }
-      const c = new window['nunjucks']['compiler']['Compiler']('noop');
-      const frame = new window['nunjucks']['runtime'].Frame();
-      c._emitFuncBegin(this, 'renderNode');
-      c.compile(transformer.transform(this, [], 'noop'), frame);
-      c._emitFuncEnd();
-      c._emitLine('return {');
-      c._emitLine('renderNode\n};');
-      const func = new Function(c.getCode());
-      const result = await new Promise((res, rej) => {
-        func()['renderNode'](self['env'], context, frame, window['nunjucks']['runtime'], (err, output) => {
-          if (!!err) rej(err);
-          res(output);
-        });
-      });
-      this._renderCache = result;
-      return result;
-    };
-    node.invalidateRenderCache = async function () {
-      this._renderCache = null;
-    };
-  }
-  static async renderNodes(parsedNodes) {
-    let html = '';
-    for (let i = 0; i < parsedNodes.children.length; i++) {
-      try {
-        html += await parsedNodes.children[i].render();
-      } catch (ex) {
-        console.error(ex);
-      }
-    }
-    return html;
-  }
-  constructor(options) {
-    options = options || {};
-    this.updateMode = options.updateMode || 'auto';
-    if (this.updateMode === 'auto') {
-      this.updateMode = DatabindExtension.determineUpdateMode();
-    }
-    Hooks.setup(this);
-  }
-  deepProxify(obj, root) {
-    if (obj.hasOwnProperty('__nunjucks_databind_ctx')) {
-      return obj;
-    }
-    for (const property in obj) {
-      if (obj.hasOwnProperty(property) === false) {
-        continue;
-      }
-      if (Array.isArray(obj[property]) || typeof obj[property] === 'object') {
-        obj[property]['__nunjucks_databind_ctx'] = true;
-        obj[property] = new Proxy(obj[property], new ContextProxyHandler(root, Array.isArray(obj[property]) ? property : null));
-        if (typeof obj[property] === 'object') {
-          this.deepProxify(obj[property], root);
-        }
-      }
-    }
-    obj['__nunjucks_databind_ctx'] = true;
-    return new Proxy(obj, new ContextProxyHandler(root));
-  }
-  createContext(ctx) {
-    return this.deepProxify(ctx, ctx);
+  static extendTemplatePrototype(templatePrototype) {
+    extendPrototype(templatePrototype, TemplateHook);
   }
 }
-module.exports = DatabindExtension;
+module.exports = TemplateHook;
 
-},{"./ContextHolder":8,"./ContextProxyHandler":9,"./Hooks":11,"morphdom":2,"nunjucks/src/transformer":6}],11:[function(require,module,exports){
+},{"../DatabindTemplate":9,"../utils/extendPrototype":16}],16:[function(require,module,exports){
 "use strict";
 
-class Hooks {
-  static setup(ext) {
-    if (Hooks.isSetup === true) {
-      return;
+module.exports = function extendPrototype(proto, ext) {
+  proto._originalProperties = {};
+  const properties = Object.getOwnPropertyNames(ext.prototype);
+  for (const prop of properties) {
+    if (prop === 'constructor') {
+      continue;
     }
-    Hooks.ext = ext;
-    if (!!window['nunjucks']) {
-      if (!!window['nunjucks']['Template']) {
-        window['nunjucks']['Template'].prototype.renderToDom = Hooks.ext.templateRenderToDom;
-      }
-      if (!!window['nunjucks']['Environment']) {
-        window['nunjucks']['Environment'].prototype.renderToDom = Hooks.ext.environmentRenderToDom;
-      }
-      window['nunjucks'].renderToDom = Hooks.ext.renderToDom;
+    if (proto.hasOwnProperty(prop)) {
+      proto._originalProperties[prop] = proto[prop];
     }
-    Hooks.isSetup = true;
+    proto[prop] = ext.prototype[prop];
   }
-}
-module.exports = Hooks;
+};
 
-},{}]},{},[10])(10)
+},{}],17:[function(require,module,exports){
+"use strict";
+
+module.exports = function seriesToString(funcArray, cb) {
+  let index = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : 0;
+  let results = arguments.length > 3 && arguments[3] !== undefined ? arguments[3] : '';
+  if (index < funcArray.length) {
+    funcArray[index]((err, result) => {
+      if (!!err) {
+        return cb(err, results);
+      }
+      results += result;
+      seriesToString(funcArray, cb, index + 1, results);
+    });
+  } else {
+    return cb(null, results);
+  }
+};
+
+},{}]},{},[8])(8)
 });

@@ -28,7 +28,8 @@
 
 <body>
 <input type="text" value="person" id="nameSrc"/>
-<input type="checkbox" id="customCheck"/>
+<input type="checkbox" id="customCheck"/> Custom Check
+<input type="checkbox" id="showList"/> Show List
 
 <div id="container"></div>
 
@@ -46,6 +47,7 @@
             displayName: 'person',
             items: ['Test1', 'Test2'],
             customCheck: false,
+            showList: false,
         });
 
         var containerDomElement = document.getElementById('container');
@@ -63,6 +65,7 @@
             var newItemDomElement = document.getElementById('newItem');
             var eventTestDomElement = document.getElementById('event-test-button');
             var customCheckDomElement = document.getElementById('customCheck');
+            var showListDomElement = document.getElementById('showList');
 
             // Update the displayName value when user types in the nameSrc field
             if (nameSrcDomElement) {
@@ -88,8 +91,14 @@
             }
 
             if (customCheckDomElement) {
-                customCheckDomElement.addEventListener('change', function (e) {
+                customCheckDomElement.addEventListener('change', function () {
                     data.customCheck = customCheckDomElement.checked;
+                });
+            }
+
+            if (showListDomElement) {
+                showListDomElement.addEventListener('change', function () {
+                    data.showList = showListDomElement.checked;
                 });
             }
         });

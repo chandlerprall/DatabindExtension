@@ -33,6 +33,15 @@ Without starting any tag, {{ displayName }} decided it was time to type some tex
     <li>{{ item }}</li>
 {% endfor %}
 
+<h2>Nested For Test</h2>
+{% if showList %}
+{% for item in items %}
+    <li>{{ item }}</li>
+{% endfor %}
+{% else %}
+    Show List is unchecked
+{% endif %}
+
 
 <h2>Include Test</h2>
 {% include "list.njk" %}
